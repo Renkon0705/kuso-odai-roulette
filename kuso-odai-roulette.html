@@ -82,10 +82,6 @@ button {
   cursor: pointer;
 }
 
-button:disabled {
-  opacity: 0.4;
-}
-
 #spinBtn {
   border-color: #c9a24d;
   color: #c9a24d;
@@ -117,13 +113,14 @@ const csvURL =
 "https://docs.google.com/spreadsheets/d/1l2aSZI_c9Ae9O4bBD8U1YBt0JiAbg75ahg1AAhaSqqU/export?format=csv&gid=1966770932";
 
 const ITEM_HEIGHT = 140;
+const LOOP_COUNT = 3;
 
 let lists = [[], [], []];
 let reels = [];
 let timers = [];
+let positions = [0, 0, 0];
 let spinning = [false, false, false];
 
-// CSV読み込み
 fetch(csvURL)
   .then(res => res.text())
   .then(text => {
@@ -141,48 +138,58 @@ fetch(csvURL)
     }
   });
 
-// リール構築
+// リール構築（複製あり）
 function buildReel(i) {
   reels[i].innerHTML = "";
-  lists[i].forEach(t => {
-    const d = document.createElement("div");
-    d.className = "item";
-    d.textContent = t;
-    reels[i].appendChild(d);
-  });
+  for (let l = 0; l < LOOP_COUNT; l++) {
+    lists[i].forEach(t => {
+      const d = document.createElement("div");
+      d.className = "item";
+      d.textContent = t;
+      reels[i].appendChild(d);
+    });
+  }
 }
 
 // 回転開始
 function startSpin() {
   for (let i = 0; i < 3; i++) {
     clearInterval(timers[i]);
-    reels[i].style.transform = "translateY(0px)";
+    reels[i].style.transition = "none";
+    positions[i] = 0;
     spinning[i] = true;
 
     timers[i] = setInterval(() => {
-      reels[i].dataset.pos = ((+reels[i].dataset.pos || 0) + 20);
+      positions[i] += 6;
+      const limit = lists[i].length * ITEM_HEIGHT;
+
+      if (positions[i] >= limit) {
+        positions[i] -= limit;
+      }
+
       reels[i].style.transform =
-        `translateY(${-reels[i].dataset.pos}px)`;
+        `translateY(${-positions[i]}px)`;
     }, 16);
   }
 }
 
-// ストップ（完全安全版）
+// ストップ
 function stopReel(i) {
   if (!spinning[i]) return;
   spinning[i] = false;
   clearInterval(timers[i]);
 
-  const maxIndex = lists[i].length - 1;
-  const index = Math.floor(Math.random() * (maxIndex + 1));
+  const index = Math.floor(Math.random() * lists[i].length);
+  const target = index * ITEM_HEIGHT;
 
-  reels[i].style.transition = "transform 0.25s ease-out";
-  reels[i].style.transform =
-    `translateY(${-index * ITEM_HEIGHT}px)`;
+  reels[i].style.transition = "transform 0.3s ease-out";
+  reels[i].style.transform = `translateY(${-target}px)`;
+
+  positions[i] = target;
 
   setTimeout(() => {
     reels[i].style.transition = "none";
-  }, 300);
+  }, 350);
 }
 </script>
 </body>
