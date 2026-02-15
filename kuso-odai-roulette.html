@@ -88,7 +88,6 @@ button {
   color: #c9a24d;
 }
 
-/* バージョン表記 */
 #version {
   position: absolute;
   right: 16px;
@@ -117,7 +116,7 @@ button {
 
   <button id="spinBtn" onclick="startSpin()">回す</button>
 
-  <div id="version">ver. 1.1.0</div>
+  <div id="version">ver. 1.1.1</div>
 </div>
 
 <script>
@@ -126,7 +125,7 @@ const csvURL =
 
 const ITEM_HEIGHT = 140;
 const LOOP_COUNT = 3;
-const SPEED = 14; // ← スピードアップ
+const SPEED = 14;
 
 let lists = [[], [], []];
 let reels = [];
@@ -151,7 +150,7 @@ fetch(csvURL)
     }
   });
 
-// リール構築（ループ）
+// リール構築（複製）
 function buildReel(i) {
   reels[i].innerHTML = "";
   for (let l = 0; l < LOOP_COUNT; l++) {
@@ -164,37 +163,37 @@ function buildReel(i) {
   }
 }
 
-// 回転開始（下方向）
+// ▶ 回転開始（下方向・正ループ）
 function startSpin() {
   for (let i = 0; i < 3; i++) {
     clearInterval(timers[i]);
     reels[i].style.transition = "none";
-    positions[i] = 0;
+
+    const limit = lists[i].length * ITEM_HEIGHT;
+    positions[i] = -limit; // ← 下方向用の初期位置
     spinning[i] = true;
 
     timers[i] = setInterval(() => {
       positions[i] += SPEED;
-      const limit = lists[i].length * ITEM_HEIGHT;
 
-      if (positions[i] >= limit) {
-        positions[i] -= limit;
+      if (positions[i] >= 0) {
+        positions[i] = -limit;
       }
 
-      // ↓ 下に流れる
       reels[i].style.transform =
         `translateY(${positions[i]}px)`;
     }, 16);
   }
 }
 
-// ストップ
+// ■ ストップ
 function stopReel(i) {
   if (!spinning[i]) return;
   spinning[i] = false;
   clearInterval(timers[i]);
 
   const index = Math.floor(Math.random() * lists[i].length);
-  const target = index * ITEM_HEIGHT;
+  const target = -index * ITEM_HEIGHT;
 
   reels[i].style.transition = "transform 0.3s ease-out";
   reels[i].style.transform = `translateY(${target}px)`;
