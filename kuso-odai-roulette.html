@@ -13,7 +13,6 @@ body {
   text-align: center;
 }
 
-/* ===== スロット ===== */
 .slots {
   display: flex;
   justify-content: center;
@@ -36,7 +35,6 @@ body {
   top: 0;
 }
 
-/* ===== ボタン ===== */
 .buttons {
   margin-top: 20px;
 }
@@ -48,7 +46,7 @@ button {
   cursor: pointer;
 }
 
-/* ===== 完成お題（全画面） ===== */
+/* ===== 完成お題 ===== */
 #resultOverlay {
   display: none;
   position: fixed;
@@ -65,14 +63,14 @@ button {
   font-size: 42px;
   font-weight: bold;
   display: flex;
-  gap: 20px;   /* ← 掛け算じゃなく余白 */
-  margin-bottom: 40px;
+  gap: 20px;
 }
 
-/* ×ボタン（下・親指向け） */
+/* ×ボタン：完成お題の下 */
 #closeBtn {
-  font-size: 28px;
-  padding: 15px 40px;
+  margin-top: 30px;
+  font-size: 24px;
+  padding: 12px 36px;
 }
 
 footer {
@@ -102,50 +100,43 @@ footer {
   <button onclick="stopSlot(2)">止め③</button>
 </div>
 
-<!-- ===== 完成お題表示 ===== -->
 <div id="resultOverlay">
   <div id="resultText"></div>
-  <button id="closeBtn" onclick="closeResult()">× 消す</button>
+  <button id="closeBtn" onclick="closeResult()">×</button>
 </div>
 
 <footer>ver 1.1.2</footer>
 
 <script>
-/* ===== スプレッドシート設定 ===== */
 const SHEET_ID = "1l2aSZI_c9Ae9O4bBD8U1YBt0JiAbg75ahg1AAhaSqqU";
 const GID = "1966770932";
 const URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?gid=${GID}`;
 
-/* ===== データ ===== */
 let data = [[], [], []];
 let timers = [];
 let running = [false, false, false];
 let current = ["", "", ""];
 
-/* ===== 読み込み ===== */
 fetch(URL)
   .then(r => r.text())
   .then(text => {
     const json = JSON.parse(text.substr(47).slice(0, -2));
     const rows = json.table.rows;
-
     rows.slice(1).forEach(r => {
       if (r.c[1]) data[0].push(r.c[1].v);
       if (r.c[2]) data[1].push(r.c[2].v);
       if (r.c[3]) data[2].push(r.c[3].v);
     });
-
     initSlots();
   });
 
 function initSlots() {
   for (let i = 0; i < 3; i++) {
-    const inner = document.getElementById(`slot${i+1}`);
-    inner.innerHTML = data[i].map(t => `<div>${t}</div>`).join("");
+    document.getElementById(`slot${i+1}`).innerHTML =
+      data[i].map(t => `<div>${t}</div>`).join("");
   }
 }
 
-/* ===== 回す ===== */
 function startAll() {
   closeResult();
   for (let i = 0; i < 3; i++) startSlot(i);
@@ -154,36 +145,29 @@ function startAll() {
 function startSlot(i) {
   if (running[i]) return;
   running[i] = true;
-
   const inner = document.getElementById(`slot${i+1}`);
   let pos = 0;
   const height = 60 * data[i].length;
 
   timers[i] = setInterval(() => {
-    pos += 20;                 // 基本速度UP
-    if (pos >= height) pos = 0; // ループ
+    pos += 20;
+    if (pos >= height) pos = 0;
     inner.style.top = -pos + "px";
   }, 30);
 }
 
-/* ===== 止める（減速STOP） ===== */
 function stopSlot(i) {
   if (!running[i]) return;
   running[i] = false;
-
   clearInterval(timers[i]);
 
-  const inner = document.getElementById(`slot${i+1}`);
   const index = Math.floor(Math.random() * data[i].length);
   current[i] = data[i][index];
-  inner.style.top = -(index * 60) + "px";
+  document.getElementById(`slot${i+1}`).style.top = -(index * 60) + "px";
 
-  if (running.every(v => !v)) {
-    showResult();
-  }
+  if (running.every(v => !v)) showResult();
 }
 
-/* ===== 完成表示 ===== */
 function showResult() {
   document.getElementById("resultText").innerHTML =
     `<div>${current[0]}</div><div>${current[1]}</div><div>${current[2]}</div>`;
