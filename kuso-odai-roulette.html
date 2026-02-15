@@ -7,57 +7,65 @@
 
 <style>
 body {
-  background: #000;
-  color: #fff;
-  font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+  margin: 0;
+  height: 100vh;
+  background: radial-gradient(circle at top, #222 0%, #000 70%);
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
-  margin: 0;
+  font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
 }
 
-.container {
+.card {
   width: 90%;
-  max-width: 720px;
-  border: 4px solid #fff;
+  max-width: 700px;
+  height: 70vh;
+  background: linear-gradient(180deg, #111, #000);
+  border: 4px solid #c9a24d;
+  border-radius: 20px;
+  box-shadow: 0 0 30px rgba(201,162,77,0.6);
   padding: 30px;
-  text-align: center;
+  display: flex;
+  flex-direction: column;
 }
 
 h1 {
-  font-size: 32px;
-  margin-bottom: 20px;
+  text-align: center;
+  color: #c9a24d;
+  letter-spacing: 2px;
+  margin: 0 0 20px;
 }
 
 .slots {
+  flex: 1;
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 10px;
-  margin: 20px 0;
 }
 
 .slot {
   flex: 1;
-  min-height: 90px;
-  border: 2px solid #fff;
+  height: 100%;
+  background: rgba(0,0,0,0.6);
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  color: #fff;
+  font-size: 28px;
+  font-weight: bold;
+  text-align: center;
   padding: 10px;
 }
 
-#result {
-  margin: 30px 0;
-  font-size: 28px;
-  line-height: 1.6;
-  white-space: pre-line;
-}
-
 button {
+  margin-top: 20px;
+  padding: 18px;
   font-size: 24px;
-  padding: 16px 36px;
+  font-weight: bold;
+  letter-spacing: 2px;
   border: 3px solid #fff;
   background: transparent;
   color: #fff;
@@ -73,27 +81,22 @@ button:active {
 
 <body>
 
-<div class="container">
-  <h1>🎰 クソお題ルーレット</h1>
+<div class="card">
+  <h1>クソお題ルーレット</h1>
 
   <div class="slots">
-    <div class="slot" id="slotB">B列</div>
-    <div class="slot" id="slotC">C列</div>
-    <div class="slot" id="slotD">D列</div>
+    <div id="slotB" class="slot">―</div>
+    <div id="slotC" class="slot">―</div>
+    <div id="slotD" class="slot">―</div>
   </div>
-
-  <div id="result">回せ</div>
 
   <button onclick="spin()">回す</button>
 </div>
 
 <script>
-// ===== スプレッドシート設定 =====
-const SHEET_ID = "1l2aSZI_c9Ae9O4bBD8U1YBt0JiAbg75ahg1AAhaSqqU";
-const GID = "1966770932";
-
+// ===== Googleスプレッドシート =====
 const csvURL =
-  `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
+  "https://docs.google.com/spreadsheets/d/1l2aSZI_c9Ae9O4bBD8U1YBt0JiAbg75ahg1AAhaSqqU/export?format=csv&gid=1966770932";
 
 let listB = [];
 let listC = [];
@@ -103,39 +106,31 @@ let listD = [];
 fetch(csvURL)
   .then(res => res.text())
   .then(text => {
-    const lines = text.split("\n").slice(1); // 2行目から
-    lines.forEach(line => {
-      const cols = line.split(",");
-      if (cols[1]) listB.push(cols[1]); // B列
-      if (cols[2]) listC.push(cols[2]); // C列
-      if (cols[3]) listD.push(cols[3]); // D列
+    const rows = text.split("\n").slice(1); // 2行目から
+    rows.forEach(row => {
+      const cols = row.split(",");
+      if (cols[1]) listB.push(cols[1]);
+      if (cols[2]) listC.push(cols[2]);
+      if (cols[3]) listD.push(cols[3]);
     });
   });
 
-// ランダム取得
-function rand(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-// ルーレット回転
+// ルーレット処理
 function spin() {
-  if (!listB.length || !listC.length || !listD.length) {
-    document.getElementById("result").textContent = "読み込み中…";
-    return;
-  }
+  if (!listB.length || !listC.length || !listD.length) return;
 
-  const b = rand(listB);
-  const c = rand(listC);
-  const d = rand(listD);
+  const slotB = document.getElementById("slotB");
+  const slotC = document.getElementById("slotC");
+  const slotD = document.getElementById("slotD");
 
-  document.getElementById("slotB").textContent = b;
-  document.getElementById("slotC").textContent = c;
-  document.getElementById("slotD").textContent = d;
-
-  document.getElementById("result").textContent =
-`${b}
-${c}
-${d}`;
+  let count = 0;
+  const timer = setInterval(() => {
+    slotB.textContent = listB[Math.floor(Math.random() * listB.length)];
+    slotC.textContent = listC[Math.floor(Math.random() * listC.length)];
+    slotD.textContent = listD[Math.floor(Math.random() * listD.length)];
+    count++;
+    if (count > 20) clearInterval(timer);
+  }, 80);
 }
 </script>
 
