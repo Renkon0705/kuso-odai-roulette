@@ -86,14 +86,33 @@ button {
 #spinBtn {
   border-color: #c9a24d;
   color: #c9a24d;
-  margin-bottom: 15px;
+  margin-bottom: 20px;
 }
 
-#result {
-  font-size: 28px;
-  font-weight: bold;
+/* ===== 完成お題表示 ===== */
+#resultBox {
+  position: relative;
   margin-top: 10px;
-  min-height: 40px;
+  padding: 25px 20px;
+  border: 3px solid #c9a24d;
+  border-radius: 16px;
+  font-size: 36px;
+  font-weight: bold;
+  display: none;
+}
+
+/* × ボタン */
+#closeResult {
+  position: absolute;
+  top: 8px;
+  right: 14px;
+  font-size: 22px;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+#closeResult:hover {
+  opacity: 1;
 }
 
 #version {
@@ -124,9 +143,12 @@ button {
 
   <button id="spinBtn" onclick="startSpin()">回す</button>
 
-  <div id="result"></div>
+  <div id="resultBox">
+    <div id="closeResult" onclick="closeResult()">×</div>
+    <div id="resultText"></div>
+  </div>
 
-  <div id="version">ver. 1.2.0</div>
+  <div id="version">ver. 1.2.1</div>
 </div>
 
 <script>
@@ -174,7 +196,7 @@ function buildReel(i) {
 }
 
 function startSpin() {
-  document.getElementById("result").textContent = "";
+  document.getElementById("resultBox").style.display = "none";
   results = ["", "", ""];
 
   for (let i = 0; i < 3; i++) {
@@ -207,17 +229,19 @@ function stopReel(i) {
 
   results[i] = lists[i][index];
 
-  setTimeout(() => {
-    reels[i].style.transition = "none";
-    checkComplete();
-  }, 350);
+  setTimeout(checkComplete, 350);
 }
 
 function checkComplete() {
   if (results.every(v => v !== "")) {
-    document.getElementById("result").textContent =
+    document.getElementById("resultText").textContent =
       `${results[0]} × ${results[1]} × ${results[2]}`;
+    document.getElementById("resultBox").style.display = "block";
   }
+}
+
+function closeResult() {
+  document.getElementById("resultBox").style.display = "none";
 }
 </script>
 </body>
