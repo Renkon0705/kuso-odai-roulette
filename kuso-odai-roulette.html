@@ -116,11 +116,12 @@ button:disabled {
 const csvURL =
 "https://docs.google.com/spreadsheets/d/1l2aSZI_c9Ae9O4bBD8U1YBt0JiAbg75ahg1AAhaSqqU/export?format=csv&gid=1966770932";
 
+const ITEM_HEIGHT = 140;
+
 let lists = [[], [], []];
 let reels = [];
 let timers = [];
 let spinning = [false, false, false];
-const ITEM_HEIGHT = 140;
 
 // CSV読み込み
 fetch(csvURL)
@@ -154,34 +155,34 @@ function buildReel(i) {
 // 回転開始
 function startSpin() {
   for (let i = 0; i < 3; i++) {
-    if (spinning[i]) continue;
+    clearInterval(timers[i]);
+    reels[i].style.transform = "translateY(0px)";
     spinning[i] = true;
-    spin(i);
+
+    timers[i] = setInterval(() => {
+      reels[i].dataset.pos = ((+reels[i].dataset.pos || 0) + 20);
+      reels[i].style.transform =
+        `translateY(${-reels[i].dataset.pos}px)`;
+    }, 16);
   }
 }
 
-// 回転処理
-function spin(i) {
-  let pos = 0;
-  timers[i] = setInterval(() => {
-    pos += 20;
-    if (pos >= ITEM_HEIGHT * lists[i].length) pos = 0;
-    reels[i].style.transform = `translateY(${-pos}px)`;
-  }, 16);
-}
-
-// ストップ
+// ストップ（完全安全版）
 function stopReel(i) {
   if (!spinning[i]) return;
-  clearInterval(timers[i]);
   spinning[i] = false;
+  clearInterval(timers[i]);
 
-  // ピタッと止める
-  const current = Math.abs(
-    parseInt(reels[i].style.transform.replace("translateY(", "")) || 0
-  );
-  const index = Math.round(current / ITEM_HEIGHT);
-  reels[i].style.transform = `translateY(${-index * ITEM_HEIGHT}px)`;
+  const maxIndex = lists[i].length - 1;
+  const index = Math.floor(Math.random() * (maxIndex + 1));
+
+  reels[i].style.transition = "transform 0.25s ease-out";
+  reels[i].style.transform =
+    `translateY(${-index * ITEM_HEIGHT}px)`;
+
+  setTimeout(() => {
+    reels[i].style.transition = "none";
+  }, 300);
 }
 </script>
 </body>
