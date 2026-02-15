@@ -1,52 +1,44 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>クソお題ルーレット</title>
+<meta charset="UTF-8" />
+<title>クソお題ルーレット ver1.1.2</title>
 
 <style>
 body {
-  background: radial-gradient(circle at top, #222, #000);
-  font-family: system-ui, sans-serif;
+  font-family: sans-serif;
+  background: #111;
   color: #fff;
-  margin: 0;
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.container {
-  width: 90%;
-  max-width: 900px;
-  background: #000;
-  border: 4px solid #c9a24d;
-  border-radius: 20px;
-  padding: 30px;
-  box-shadow: 0 0 30px rgba(201,162,77,.6);
   text-align: center;
-  position: relative;
+  padding: 30px;
 }
 
 h1 {
-  color: #c9a24d;
-  margin-bottom: 25px;
+  margin-bottom: 5px;
 }
 
-.slots {
+.version {
+  color: #aaa;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.slot-area {
   display: flex;
-  gap: 15px;
+  justify-content: center;
+  gap: 20px;
   margin-bottom: 20px;
 }
 
 .slot {
-  flex: 1;
-  height: 140px;
+  width: 220px;
+}
+
+.window {
+  height: 60px;
   overflow: hidden;
-  background: #111;
-  border: 2px solid #555;
-  border-radius: 12px;
+  border: 3px solid #fff;
+  background: #000;
   position: relative;
 }
 
@@ -57,153 +49,171 @@ h1 {
 }
 
 .item {
-  height: 140px;
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
-  padding: 10px;
-  box-sizing: border-box;
-}
-
-.controls {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
+  font-size: 20px;
+  white-space: nowrap;
 }
 
 button {
-  flex: 1;
-  padding: 14px;
-  font-size: 16px;
-  border-radius: 10px;
-  border: 2px solid #fff;
-  background: transparent;
-  color: #fff;
+  margin-top: 8px;
+  padding: 6px 12px;
+  font-size: 14px;
   cursor: pointer;
 }
 
-#spinBtn {
-  border-color: #c9a24d;
-  color: #c9a24d;
+#history {
+  margin-top: 30px;
+  text-align: left;
+  max-width: 700px;
+  margin-inline: auto;
 }
 
-#version {
-  position: absolute;
-  right: 16px;
-  bottom: 10px;
-  font-size: 12px;
-  opacity: 0.6;
+#history h2 {
+  font-size: 18px;
+}
+
+.log {
+  font-size: 14px;
+  color: #ccc;
+  margin-bottom: 4px;
 }
 </style>
 </head>
 
 <body>
-<div class="container">
-  <h1>🎰 クソお題ルーレット</h1>
 
-  <div class="slots">
-    <div class="slot"><div class="reel" id="reel0"></div></div>
-    <div class="slot"><div class="reel" id="reel1"></div></div>
-    <div class="slot"><div class="reel" id="reel2"></div></div>
+<h1>🎰 クソお題ルーレット</h1>
+<div class="version">ver 1.1.2</div>
+
+<div class="slot-area">
+  <div class="slot">
+    <div class="window"><div class="reel" id="reel0"></div></div>
+    <button onclick="stopSlot(0)">STOP</button>
   </div>
-
-  <div class="controls">
-    <button onclick="stopReel(0)">STOP</button>
-    <button onclick="stopReel(1)">STOP</button>
-    <button onclick="stopReel(2)">STOP</button>
+  <div class="slot">
+    <div class="window"><div class="reel" id="reel1"></div></div>
+    <button onclick="stopSlot(1)">STOP</button>
   </div>
+  <div class="slot">
+    <div class="window"><div class="reel" id="reel2"></div></div>
+    <button onclick="stopSlot(2)">STOP</button>
+  </div>
+</div>
 
-  <button id="spinBtn" onclick="startSpin()">回す</button>
+<button onclick="startAll()">▶ 回す</button>
 
-  <div id="version">ver. 1.1.1</div>
+<div id="history">
+  <h2>📜 履歴</h2>
+  <div id="logs"></div>
 </div>
 
 <script>
-const csvURL =
-"https://docs.google.com/spreadsheets/d/1l2aSZI_c9Ae9O4bBD8U1YBt0JiAbg75ahg1AAhaSqqU/export?format=csv&gid=1966770932";
+// ====== 設定 ======
+const SHEET_ID = "1l2aSZI_c9Ae9O4bBD8U1YBt0JiAbg75ahg1AAhaSqqU";
+const GID = "1966770932";
+const BASE_SPEED = 25;     // 基本速度（小さいほど速い）
+const STOP_DECEL = 1.08;  // 減速率
 
-const ITEM_HEIGHT = 140;
-const LOOP_COUNT = 3;
-const SPEED = 14;
-
-let lists = [[], [], []];
+// ====== 状態 ======
+let data = [[], [], []];
 let reels = [];
 let timers = [];
-let positions = [0, 0, 0];
-let spinning = [false, false, false];
+let speeds = [];
+let stopping = [false, false, false];
+let stopped = [false, false, false];
 
-fetch(csvURL)
+// ====== 読み込み ======
+fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`)
   .then(res => res.text())
-  .then(text => {
-    const rows = text.trim().split("\n").slice(1);
+  .then(csv => {
+    const rows = csv.split("\n").slice(1);
     rows.forEach(r => {
-      const c = r.split(",");
-      if (c[1]) lists[0].push(c[1]);
-      if (c[2]) lists[1].push(c[2]);
-      if (c[3]) lists[2].push(c[3]);
+      const cols = r.split(",");
+      if (cols[1]) data[0].push(cols[1]);
+      if (cols[2]) data[1].push(cols[2]);
+      if (cols[3]) data[2].push(cols[3]);
     });
-
-    for (let i = 0; i < 3; i++) {
-      reels[i] = document.getElementById("reel" + i);
-      buildReel(i);
-    }
+    init();
   });
 
-// リール構築（複製）
-function buildReel(i) {
-  reels[i].innerHTML = "";
-  for (let l = 0; l < LOOP_COUNT; l++) {
-    lists[i].forEach(t => {
-      const d = document.createElement("div");
-      d.className = "item";
-      d.textContent = t;
-      reels[i].appendChild(d);
+// ====== 初期化 ======
+function init() {
+  for (let i = 0; i < 3; i++) {
+    reels[i] = document.getElementById("reel" + i);
+    reels[i].innerHTML = "";
+
+    // ループ用に2周分作る
+    [...data[i], ...data[i]].forEach(t => {
+      const div = document.createElement("div");
+      div.className = "item";
+      div.textContent = t;
+      reels[i].appendChild(div);
     });
+
+    reels[i].style.top = "0px";
   }
 }
 
-// ▶ 回転開始（下方向・正ループ）
-function startSpin() {
+// ====== 回す ======
+function startAll() {
   for (let i = 0; i < 3; i++) {
     clearInterval(timers[i]);
-    reels[i].style.transition = "none";
-
-    const limit = lists[i].length * ITEM_HEIGHT;
-    positions[i] = -limit; // ← 下方向用の初期位置
-    spinning[i] = true;
-
-    timers[i] = setInterval(() => {
-      positions[i] += SPEED;
-
-      if (positions[i] >= 0) {
-        positions[i] = -limit;
-      }
-
-      reels[i].style.transform =
-        `translateY(${positions[i]}px)`;
-    }, 16);
+    speeds[i] = BASE_SPEED;
+    stopping[i] = false;
+    stopped[i] = false;
+    spin(i);
   }
 }
 
-// ■ ストップ
-function stopReel(i) {
-  if (!spinning[i]) return;
-  spinning[i] = false;
-  clearInterval(timers[i]);
+function spin(i) {
+  let pos = 0;
+  const itemHeight = 60;
+  const maxHeight = data[i].length * itemHeight;
 
-  const index = Math.floor(Math.random() * lists[i].length);
-  const target = -index * ITEM_HEIGHT;
+  timers[i] = setInterval(() => {
+    pos -= 6;
+    if (-pos >= maxHeight) pos = 0; // ループ
+    reels[i].style.top = pos + "px";
 
-  reels[i].style.transition = "transform 0.3s ease-out";
-  reels[i].style.transform = `translateY(${target}px)`;
+    if (stopping[i]) {
+      speeds[i] *= STOP_DECEL;
+      clearInterval(timers[i]);
+      timers[i] = setInterval(arguments.callee, speeds[i]);
 
-  positions[i] = target;
+      if (speeds[i] > 200) {
+        clearInterval(timers[i]);
+        const index = Math.floor(Math.random() * data[i].length);
+        reels[i].style.top = -(index * itemHeight) + "px";
+        stopped[i] = true;
+        checkAllStopped();
+      }
+    }
+  }, speeds[i]);
+}
 
-  setTimeout(() => {
-    reels[i].style.transition = "none";
-  }, 350);
+// ====== 停止 ======
+function stopSlot(i) {
+  if (!stopped[i]) stopping[i] = true;
+}
+
+// ====== 全停止チェック ======
+function checkAllStopped() {
+  if (stopped.every(v => v)) {
+    const result = [0,1,2].map(i => {
+      const idx = Math.abs(parseInt(reels[i].style.top)) / 60;
+      return data[i][idx];
+    });
+
+    const log = document.createElement("div");
+    log.className = "log";
+    log.textContent = result.join(" × ");
+    document.getElementById("logs").prepend(log);
+  }
 }
 </script>
+
 </body>
 </html>
