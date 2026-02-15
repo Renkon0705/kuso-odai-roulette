@@ -19,7 +19,7 @@ body {
 
 .container {
   width: 90%;
-  max-width: 800px;
+  max-width: 900px;
   background: #000;
   border: 4px solid #c9a24d;
   border-radius: 20px;
@@ -30,26 +30,39 @@ body {
 
 h1 {
   color: #c9a24d;
-  margin-bottom: 20px;
+  margin-bottom: 25px;
 }
 
 .slots {
   display: flex;
-  gap: 10px;
+  gap: 15px;
   margin-bottom: 20px;
 }
 
 .slot {
   flex: 1;
+  height: 140px;
+  overflow: hidden;
   background: #111;
   border: 2px solid #555;
-  border-radius: 10px;
-  padding: 20px;
-  font-size: 22px;
-  min-height: 120px;
+  border-radius: 12px;
+  position: relative;
+}
+
+.reel {
+  position: absolute;
+  width: 100%;
+  top: 0;
+}
+
+.item {
+  height: 140px;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 24px;
+  padding: 10px;
+  box-sizing: border-box;
 }
 
 .controls {
@@ -85,15 +98,15 @@ button:disabled {
   <h1>🎰 クソお題ルーレット</h1>
 
   <div class="slots">
-    <div class="slot" id="slotA">—</div>
-    <div class="slot" id="slotB">—</div>
-    <div class="slot" id="slotC">—</div>
+    <div class="slot"><div class="reel" id="reel0"></div></div>
+    <div class="slot"><div class="reel" id="reel1"></div></div>
+    <div class="slot"><div class="reel" id="reel2"></div></div>
   </div>
 
   <div class="controls">
-    <button onclick="stopSlot(0)">STOP</button>
-    <button onclick="stopSlot(1)">STOP</button>
-    <button onclick="stopSlot(2)">STOP</button>
+    <button onclick="stopReel(0)">STOP</button>
+    <button onclick="stopReel(1)">STOP</button>
+    <button onclick="stopReel(2)">STOP</button>
   </div>
 
   <button id="spinBtn" onclick="startSpin()">回す</button>
@@ -104,8 +117,10 @@ const csvURL =
 "https://docs.google.com/spreadsheets/d/1l2aSZI_c9Ae9O4bBD8U1YBt0JiAbg75ahg1AAhaSqqU/export?format=csv&gid=1966770932";
 
 let lists = [[], [], []];
-let timers = [null, null, null];
+let reels = [];
+let timers = [];
 let spinning = [false, false, false];
+const ITEM_HEIGHT = 140;
 
 // CSV読み込み
 fetch(csvURL)
@@ -113,35 +128,60 @@ fetch(csvURL)
   .then(text => {
     const rows = text.trim().split("\n").slice(1);
     rows.forEach(r => {
-      const cols = r.split(",");
-      if (cols[1]) lists[0].push(cols[1]);
-      if (cols[2]) lists[1].push(cols[2]);
-      if (cols[3]) lists[2].push(cols[3]);
+      const c = r.split(",");
+      if (c[1]) lists[0].push(c[1]);
+      if (c[2]) lists[1].push(c[2]);
+      if (c[3]) lists[2].push(c[3]);
     });
+
+    for (let i = 0; i < 3; i++) {
+      reels[i] = document.getElementById("reel" + i);
+      buildReel(i);
+    }
   });
 
-// スロット開始
+// リール構築
+function buildReel(i) {
+  reels[i].innerHTML = "";
+  lists[i].forEach(t => {
+    const d = document.createElement("div");
+    d.className = "item";
+    d.textContent = t;
+    reels[i].appendChild(d);
+  });
+}
+
+// 回転開始
 function startSpin() {
   for (let i = 0; i < 3; i++) {
+    if (spinning[i]) continue;
     spinning[i] = true;
-    spinSlot(i);
+    spin(i);
   }
 }
 
 // 回転処理
-function spinSlot(i) {
-  const el = document.getElementById(["slotA","slotB","slotC"][i]);
+function spin(i) {
+  let pos = 0;
   timers[i] = setInterval(() => {
-    const r = Math.floor(Math.random() * lists[i].length);
-    el.textContent = lists[i][r] || "—";
-  }, 60);
+    pos += 20;
+    if (pos >= ITEM_HEIGHT * lists[i].length) pos = 0;
+    reels[i].style.transform = `translateY(${-pos}px)`;
+  }, 16);
 }
 
-// 個別ストップ
-function stopSlot(i) {
+// ストップ
+function stopReel(i) {
   if (!spinning[i]) return;
   clearInterval(timers[i]);
   spinning[i] = false;
+
+  // ピタッと止める
+  const current = Math.abs(
+    parseInt(reels[i].style.transform.replace("translateY(", "")) || 0
+  );
+  const index = Math.round(current / ITEM_HEIGHT);
+  reels[i].style.transform = `translateY(${-index * ITEM_HEIGHT}px)`;
 }
 </script>
 </body>
