@@ -1,162 +1,209 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>クソお題ルーレット</title>
 
 <style>
 body {
-  font-family: sans-serif;
-  background: #111;
+  background: radial-gradient(circle at top, #222, #000);
+  font-family: system-ui, sans-serif;
   color: #fff;
-  text-align: center;
-  padding: 30px;
-}
-
-.slot-area {
+  margin: 0;
+  height: 100vh;
   display: flex;
   justify-content: center;
-  gap: 20px;
+  align-items: center;
 }
 
-.window {
-  height: 60px;
-  width: 220px;
-  overflow: hidden;
-  border: 2px solid #fff;
+.container {
+  width: 90%;
+  max-width: 900px;
   background: #000;
+  border: 4px solid #c9a24d;
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 0 30px rgba(201,162,77,.6);
+  text-align: center;
+  position: relative;
+}
+
+h1 {
+  color: #c9a24d;
+  margin-bottom: 25px;
+}
+
+.slots {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.slot {
+  flex: 1;
+  height: 140px;
+  overflow: hidden;
+  background: #111;
+  border: 2px solid #555;
+  border-radius: 12px;
   position: relative;
 }
 
 .reel {
   position: absolute;
   width: 100%;
+  top: 0;
 }
 
 .item {
-  height: 60px;
+  height: 140px;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 24px;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
 button {
-  margin-top: 10px;
+  flex: 1;
+  padding: 14px;
+  font-size: 16px;
+  border-radius: 10px;
+  border: 2px solid #fff;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+#spinBtn {
+  border-color: #c9a24d;
+  color: #c9a24d;
+}
+
+#version {
+  position: absolute;
+  right: 16px;
+  bottom: 10px;
+  font-size: 12px;
+  opacity: 0.6;
 }
 </style>
 </head>
 
 <body>
+<div class="container">
+  <h1>🎰 クソお題ルーレット</h1>
 
-<h1>クソお題ルーレット</h1>
-<div>ver1.1.2</div>
+  <div class="slots">
+    <div class="slot"><div class="reel" id="reel0"></div></div>
+    <div class="slot"><div class="reel" id="reel1"></div></div>
+    <div class="slot"><div class="reel" id="reel2"></div></div>
+  </div>
 
-<div class="slot-area">
-  <div>
-    <div class="window"><div class="reel" id="reel0"></div></div>
-    <button onclick="stop(0)">STOP</button>
+  <div class="controls">
+    <button onclick="stopReel(0)">STOP</button>
+    <button onclick="stopReel(1)">STOP</button>
+    <button onclick="stopReel(2)">STOP</button>
   </div>
-  <div>
-    <div class="window"><div class="reel" id="reel1"></div></div>
-    <button onclick="stop(1)">STOP</button>
-  </div>
-  <div>
-    <div class="window"><div class="reel" id="reel2"></div></div>
-    <button onclick="stop(2)">STOP</button>
-  </div>
+
+  <button id="spinBtn" onclick="startSpin()">回す</button>
+
+  <div id="version">ver. 1.1.1</div>
 </div>
 
-<button onclick="start()">回す</button>
-
-<div id="history"></div>
-
 <script>
-const SHEET_ID = "1l2aSZI_c9Ae9O4bBD8U1YBt0JiAbg75ahg1AAhaSqqU";
-const GID = "1966770932";
+const csvURL =
+"https://docs.google.com/spreadsheets/d/1l2aSZI_c9Ae9O4bBD8U1YBt0JiAbg75ahg1AAhaSqqU/export?format=csv&gid=1966770932";
 
-const reels = [];
-const data = [[], [], []];
-const timers = [];
-const speed = [8,8,8];
-const stopping = [false,false,false];
-const stopped = [false,false,false];
-const itemH = 60;
+const ITEM_HEIGHT = 140;
+const LOOP_COUNT = 3;
+const SPEED = 14;
 
-fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`)
-  .then(r => r.text())
-  .then(t => {
-    t.split("\n").slice(1).forEach(row => {
-      const c = row.split(",");
-      if(c[1]) data[0].push(c[1]);
-      if(c[2]) data[1].push(c[2]);
-      if(c[3]) data[2].push(c[3]);
+let lists = [[], [], []];
+let reels = [];
+let timers = [];
+let positions = [0, 0, 0];
+let spinning = [false, false, false];
+
+fetch(csvURL)
+  .then(res => res.text())
+  .then(text => {
+    const rows = text.trim().split("\n").slice(1);
+    rows.forEach(r => {
+      const c = r.split(",");
+      if (c[1]) lists[0].push(c[1]);
+      if (c[2]) lists[1].push(c[2]);
+      if (c[3]) lists[2].push(c[3]);
     });
-    init();
+
+    for (let i = 0; i < 3; i++) {
+      reels[i] = document.getElementById("reel" + i);
+      buildReel(i);
+    }
   });
 
-function init(){
-  for(let i=0;i<3;i++){
-    reels[i]=document.getElementById("reel"+i);
-    reels[i].innerHTML="";
-    [...data[i],...data[i]].forEach(v=>{
-      const d=document.createElement("div");
-      d.className="item";
-      d.textContent=v;
+// リール構築（複製）
+function buildReel(i) {
+  reels[i].innerHTML = "";
+  for (let l = 0; l < LOOP_COUNT; l++) {
+    lists[i].forEach(t => {
+      const d = document.createElement("div");
+      d.className = "item";
+      d.textContent = t;
       reels[i].appendChild(d);
     });
-    reels[i].pos=0;
   }
 }
 
-function start(){
-  for(let i=0;i<3;i++){
+// ▶ 回転開始（下方向・正ループ）
+function startSpin() {
+  for (let i = 0; i < 3; i++) {
     clearInterval(timers[i]);
-    stopping[i]=false;
-    stopped[i]=false;
-    speed[i]=8;
-    spin(i);
-  }
-}
+    reels[i].style.transition = "none";
 
-function spin(i){
-  const max = data[i].length * itemH;
-  timers[i]=setInterval(()=>{
-    reels[i].pos -= 6;
-    if(-reels[i].pos >= max) reels[i].pos = 0;
-    reels[i].style.top = reels[i].pos+"px";
+    const limit = lists[i].length * ITEM_HEIGHT;
+    positions[i] = -limit; // ← 下方向用の初期位置
+    spinning[i] = true;
 
-    if(stopping[i]){
-      speed[i]*=1.08;
-      clearInterval(timers[i]);
-      timers[i]=setInterval(()=>spin(i),speed[i]);
-      if(speed[i]>180){
-        clearInterval(timers[i]);
-        const idx = Math.floor(Math.random()*data[i].length);
-        reels[i].pos = -(idx*itemH);
-        reels[i].style.top = reels[i].pos+"px";
-        stopped[i]=true;
-        check();
+    timers[i] = setInterval(() => {
+      positions[i] += SPEED;
+
+      if (positions[i] >= 0) {
+        positions[i] = -limit;
       }
-    }
-  },speed[i]);
-}
 
-function stop(i){
-  if(!stopped[i]) stopping[i]=true;
-}
-
-function check(){
-  if(stopped.every(v=>v)){
-    const res=[0,1,2].map(i=>{
-      const idx=Math.abs(reels[i].pos/itemH);
-      return data[i][idx];
-    }).join(" × ");
-    const d=document.createElement("div");
-    d.textContent=res;
-    document.getElementById("history").prepend(d);
+      reels[i].style.transform =
+        `translateY(${positions[i]}px)`;
+    }, 16);
   }
+}
+
+// ■ ストップ
+function stopReel(i) {
+  if (!spinning[i]) return;
+  spinning[i] = false;
+  clearInterval(timers[i]);
+
+  const index = Math.floor(Math.random() * lists[i].length);
+  const target = -index * ITEM_HEIGHT;
+
+  reels[i].style.transition = "transform 0.3s ease-out";
+  reels[i].style.transform = `translateY(${target}px)`;
+
+  positions[i] = target;
+
+  setTimeout(() => {
+    reels[i].style.transition = "none";
+  }, 350);
 }
 </script>
-
 </body>
 </html>
