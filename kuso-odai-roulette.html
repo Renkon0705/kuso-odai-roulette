@@ -1,135 +1,148 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>クソお題ルーレット</title>
 
 <style>
 body {
-  margin: 0;
-  background: radial-gradient(circle at top, #222 0%, #000 70%);
-  font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+  background: radial-gradient(circle at top, #222, #000);
+  font-family: system-ui, sans-serif;
   color: #fff;
+  margin: 0;
+  height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
 }
 
-.card {
-  background: linear-gradient(180deg, #111, #000);
-  border: 3px solid #c9a24d;
+.container {
+  width: 90%;
+  max-width: 800px;
+  background: #000;
+  border: 4px solid #c9a24d;
   border-radius: 20px;
   padding: 30px;
-  width: 90%;
-  max-width: 600px;
-  box-shadow: 0 0 30px rgba(201,162,77,0.5);
-  display: flex;
-  flex-direction: column;
+  box-shadow: 0 0 30px rgba(201,162,77,.6);
+  text-align: center;
 }
 
 h1 {
-  text-align: center;
   color: #c9a24d;
-  letter-spacing: 2px;
   margin-bottom: 20px;
 }
 
-#result {
+.slots {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.slot {
   flex: 1;
+  background: #111;
+  border: 2px solid #555;
+  border-radius: 10px;
+  padding: 20px;
+  font-size: 22px;
+  min-height: 120px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 32px;
-  font-weight: bold;
-  text-align: center;
-  line-height: 1.6;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
   margin-bottom: 20px;
 }
 
 button {
-  appearance: none;
+  flex: 1;
+  padding: 14px;
+  font-size: 16px;
+  border-radius: 10px;
   border: 2px solid #fff;
   background: transparent;
   color: #fff;
-  font-size: 18px;
-  padding: 14px;
-  border-radius: 40px;
   cursor: pointer;
 }
 
-button:hover {
-  background: rgba(255,255,255,0.1);
+button:disabled {
+  opacity: 0.4;
+}
+
+#spinBtn {
+  border-color: #c9a24d;
+  color: #c9a24d;
 }
 </style>
 </head>
 
 <body>
+<div class="container">
+  <h1>🎰 クソお題ルーレット</h1>
 
-<div class="card">
-  <h1>クソお題ルーレット</h1>
-  <div id="result">読み込み中…</div>
-  <button id="spinButton">回す</button>
+  <div class="slots">
+    <div class="slot" id="slotA">—</div>
+    <div class="slot" id="slotB">—</div>
+    <div class="slot" id="slotC">—</div>
+  </div>
+
+  <div class="controls">
+    <button onclick="stopSlot(0)">STOP</button>
+    <button onclick="stopSlot(1)">STOP</button>
+    <button onclick="stopSlot(2)">STOP</button>
+  </div>
+
+  <button id="spinBtn" onclick="startSpin()">回す</button>
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", () => {
+const csvURL =
+"https://docs.google.com/spreadsheets/d/1l2aSZI_c9Ae9O4bBD8U1YBt0JiAbg75ahg1AAhaSqqU/export?format=csv&gid=1966770932";
 
-  // ===== スプレッドシート設定 =====
-  const SHEET_ID = "1l2aSZI_c9Ae9O4bBD8U1YBt0JiAbg75ahg1AAhaSqqU";
-  const GID = "1966770932";
-  const CSV_URL =
-    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
+let lists = [[], [], []];
+let timers = [null, null, null];
+let spinning = [false, false, false];
 
-  let listB = [];
-  let listC = [];
-  let listD = [];
-
-  function parseCSV(text) {
-    return text
-      .trim()
-      .split("\n")
-      .slice(1)
-      .map(row => row.split(","));
-  }
-
-  fetch(CSV_URL)
-    .then(res => {
-      if (!res.ok) throw new Error("CSV fetch failed");
-      return res.text();
-    })
-    .then(text => {
-      const rows = parseCSV(text);
-      listB = rows.map(r => r[1]).filter(Boolean);
-      listC = rows.map(r => r[2]).filter(Boolean);
-      listD = rows.map(r => r[3]).filter(Boolean);
-
-      document.getElementById("result").textContent =
-        "準備OK。回してね。";
-    })
-    .catch(err => {
-      document.getElementById("result").textContent =
-        "読み込み失敗（シート公開を確認）";
-      console.error(err);
+// CSV読み込み
+fetch(csvURL)
+  .then(res => res.text())
+  .then(text => {
+    const rows = text.trim().split("\n").slice(1);
+    rows.forEach(r => {
+      const cols = r.split(",");
+      if (cols[1]) lists[0].push(cols[1]);
+      if (cols[2]) lists[1].push(cols[2]);
+      if (cols[3]) lists[2].push(cols[3]);
     });
-
-  document.getElementById("spinButton").addEventListener("click", () => {
-    if (!listB.length || !listC.length || !listD.length) {
-      document.getElementById("result").textContent = "まだ読み込み中…";
-      return;
-    }
-
-    const b = listB[Math.floor(Math.random() * listB.length)];
-    const c = listC[Math.floor(Math.random() * listC.length)];
-    const d = listD[Math.floor(Math.random() * listD.length)];
-
-    document.getElementById("result").textContent =
-      `${b} ${c} ${d}`;
   });
 
-});
-</script>
+// スロット開始
+function startSpin() {
+  for (let i = 0; i < 3; i++) {
+    spinning[i] = true;
+    spinSlot(i);
+  }
+}
 
+// 回転処理
+function spinSlot(i) {
+  const el = document.getElementById(["slotA","slotB","slotC"][i]);
+  timers[i] = setInterval(() => {
+    const r = Math.floor(Math.random() * lists[i].length);
+    el.textContent = lists[i][r] || "—";
+  }, 60);
+}
+
+// 個別ストップ
+function stopSlot(i) {
+  if (!spinning[i]) return;
+  clearInterval(timers[i]);
+  spinning[i] = false;
+}
+</script>
 </body>
 </html>
