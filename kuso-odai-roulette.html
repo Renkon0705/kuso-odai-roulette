@@ -86,6 +86,14 @@ button {
 #spinBtn {
   border-color: #c9a24d;
   color: #c9a24d;
+  margin-bottom: 15px;
+}
+
+#result {
+  font-size: 28px;
+  font-weight: bold;
+  margin-top: 10px;
+  min-height: 40px;
 }
 
 #version {
@@ -116,7 +124,9 @@ button {
 
   <button id="spinBtn" onclick="startSpin()">回す</button>
 
-  <div id="version">ver. 1.1.1</div>
+  <div id="result"></div>
+
+  <div id="version">ver. 1.2.0</div>
 </div>
 
 <script>
@@ -132,6 +142,7 @@ let reels = [];
 let timers = [];
 let positions = [0, 0, 0];
 let spinning = [false, false, false];
+let results = ["", "", ""];
 
 fetch(csvURL)
   .then(res => res.text())
@@ -150,7 +161,6 @@ fetch(csvURL)
     }
   });
 
-// リール構築（複製）
 function buildReel(i) {
   reels[i].innerHTML = "";
   for (let l = 0; l < LOOP_COUNT; l++) {
@@ -163,30 +173,26 @@ function buildReel(i) {
   }
 }
 
-// ▶ 回転開始（下方向・正ループ）
 function startSpin() {
+  document.getElementById("result").textContent = "";
+  results = ["", "", ""];
+
   for (let i = 0; i < 3; i++) {
     clearInterval(timers[i]);
     reels[i].style.transition = "none";
 
     const limit = lists[i].length * ITEM_HEIGHT;
-    positions[i] = -limit; // ← 下方向用の初期位置
+    positions[i] = -limit;
     spinning[i] = true;
 
     timers[i] = setInterval(() => {
       positions[i] += SPEED;
-
-      if (positions[i] >= 0) {
-        positions[i] = -limit;
-      }
-
-      reels[i].style.transform =
-        `translateY(${positions[i]}px)`;
+      if (positions[i] >= 0) positions[i] = -limit;
+      reels[i].style.transform = `translateY(${positions[i]}px)`;
     }, 16);
   }
 }
 
-// ■ ストップ
 function stopReel(i) {
   if (!spinning[i]) return;
   spinning[i] = false;
@@ -197,12 +203,21 @@ function stopReel(i) {
 
   reels[i].style.transition = "transform 0.3s ease-out";
   reels[i].style.transform = `translateY(${target}px)`;
-
   positions[i] = target;
+
+  results[i] = lists[i][index];
 
   setTimeout(() => {
     reels[i].style.transition = "none";
+    checkComplete();
   }, 350);
+}
+
+function checkComplete() {
+  if (results.every(v => v !== "")) {
+    document.getElementById("result").textContent =
+      `${results[0]} × ${results[1]} × ${results[2]}`;
+  }
 }
 </script>
 </body>
